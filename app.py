@@ -14,44 +14,37 @@ app = Flask(__name__)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["200 per day", "10 per hour"]
 )
 
 # Array di frasi
 frasi = [
-    "La vita è ciò che ti accade mentre sei occupato a fare altri progetti.",
-    "Il modo migliore per predire il futuro è crearlo.",
-    "La felicità non è qualcosa di già pronto. Nasce dalle tue azioni.",
-    "Il successo è la somma di piccoli sforzi ripetuti giorno dopo giorno.",
-    "La creatività è l'intelligenza che si diverte.",
-    "Non aspettare. Il tempo non sarà mai giusto.",
-    "La semplicità è la massima sofisticazione.",
-    "Fai quello che puoi, con quello che hai, nel posto in cui sei.",
-    "Il viaggio di mille miglia inizia con un singolo passo.",
-    "La conoscenza parla, ma la saggezza ascolta."
+    "Write everything you want",
+    "Something like that",
+    "GO build smth!",
 ]
 
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({
-        "message": "Benvenuto all'API delle frasi casuali!",
-        "istruzioni": "Usa /frase-casuale per ottenere una frase casuale."
+        "message": "Welcome this API returns casual phrases!",
+        "how-to": "Use /casual-phrase to retrieve a casual phrase"
     })
 
-@app.route('/frase-casuale', methods=['GET'])
+@app.route('/casual-phrase', methods=['GET'])
 @limiter.limit("1 per 5 seconds")
 def get_frase_casuale():
     try:
         frase = random.choice(frasi)
-        app.logger.info(f"Frase restituita: {frase}")
-        return jsonify({'frase': frase})
+        app.logger.info(f"phrase {frase}")
+        return jsonify({'phrase': frase})
     except Exception as e:
-        app.logger.error(f"Errore nel recupero della frase: {str(e)}")
-        return jsonify({'errore': 'Si è verificato un errore interno'}), 500
+        app.logger.error(f"Errore retrieving the phrase: {str(e)}")
+        return jsonify({'error': 'Internal error'}), 500
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    return jsonify({'errore': 'Limite di richieste superato. Riprova più tardi.'}), 429
+    return jsonify({'error': 'Limite di richieste superato. Riprova più tardi.'}), 429
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
