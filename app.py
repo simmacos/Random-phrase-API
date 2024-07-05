@@ -13,10 +13,11 @@ app = Flask(__name__)
 
 # Rate limiting configuration
 limiter = Limiter(
-    app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "10 per hour"]
+    default_limits=["200 per day", "10 per hour"],
+    storage_uri="memory://"
 )
+limiter.init_app(app)
 
 # Read phrases from environment variable
 phrases_json = os.environ.get('PHRASES', '[]')
@@ -30,6 +31,8 @@ def home():
     })
 
 @app.route('/casual-phrase', methods=['GET'])
+@limiter.limit("200 per day")
+@limiter.limit("10 per hour")
 @limiter.limit("1 per 5 seconds")
 def get_casual_phrase():
     try:
@@ -44,10 +47,17 @@ def get_casual_phrase():
         app.logger.error(f"Error retrieving the phrase: {str(e)}")
         return jsonify({'error': 'Internal error'}), 500
 
+@limiter.request_filter
+def log_limiter_hit():
+    app.logger.info(f"Rate limit hit for IP: {get_remote_address()}")
+    return False
+
 @app.errorhandler(429)
 def ratelimit_handler(e):
+    app.logger.warning(f"Rate limit exceeded for IP: {get_remote_address()}")
     return jsonify({'error': 'Request limit reached, try again later!'}), 429
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug)
